@@ -1,4 +1,4 @@
-﻿// ==UserScript==
+// ==UserScript==
 //
 // @name         IMDb Scout Mod
 // @version      27.3.1
@@ -28,6 +28,7 @@
 // @include      https://*.imdb.tld/user/*/watchlist*
 // @include      https://*.imdb.tld/user/*/ratings*
 // @include      https://*.imdb.tld/list/ls*
+// @include      https://letterboxd.com/film/*
 //
 // @include      https://*.imdb.tld/*/title/tt*
 //
@@ -4971,6 +4972,12 @@ var usenet_sites = [
       'loggedOutRegex': /Cloudflare|Ray ID|Forgotten your password/,
       'matchRegex': /did not match any/,
       'TV': true},
+  {   'name': 'NZBAtlas',
+      'icon': 'data:image/x-icon;base64,AAABAAEAEBAAAAAAAABoBQAAFgAAACgAAAAQAAAAIAAAAAEACAAAAAAAAAEAAAAAAAAAAAAAAAEAAAAAAAD///8AGmk6AACHYwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgICAgICAgICAgICAgICAgICAgICAgIAAAICAgICAgICAgICAgIAAAAAAgICAgICAgICAgIAAAAAAAACAgICAgICAgIAAAAAAAAAAAICAgICAgIAAAAAAAAAAAAAAgICAgIAAAABAQAAAQEAAAACAgICAgIAAQEAAAEBAAICAgICAgICAAEBAAEBAQACAgICAgICAgABAQEBAQEAAgICAgICAgIAAQEBAQEBAAICAgICAgICAAEBAQABAQACAgICAgICAgABAQAAAQEAAgICAgICAgIAAQEAAAEBAAICAgICAgICAAAAAAAAAAACAgICAgICAgICAgICAgICAgICAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      'searchUrl': 'https://nzbatlas.com/search/%search_string%',
+      'loggedOutRegex': /Cloudflare|Ray ID|Forgotten your password/,
+      'matchRegex': /did not match any/,
+      'both': true},
   {   'name': 'NZBfinder',
       'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAUVBMVEUAAAAPZKETVnZWVRs7PEaFijtISUhlUzpUNR+KOBWec1CKTSw5NiRFXWWYWza/iWWBYkh8QxpFfJ2AkJFucHmzRhWjp6N+azPa1cXEvKK2t7wPPR6IAAAAAXRSTlMAQObYZgAAARtJREFUOMt9klmugzAMRRNs7DgTYSi03f9Cn1O9SlXBPUJ8cA9XdhT3yTiOcRydheZMRDzaOSFtBckw4GDE7bkitkuj4EEq3J9WBZIW4LrvG+JxWcBdIOyc5wTI+cCMmWPLGeBiQoBZ0tRCjMyvjc5LitRGOU7t6OfVprh+dcSYIvGkgFNhhK+SNKmQUq01glu24r6RGpOIhCCiwjKchFmC3CSlNMtcvL8SEOWmSBj8lSDkB5zFzB3pVz+01oaOO6O5/rrfHzrfJcNbWE3B67M+9tU7y1iKJ2ayBFemqRAA+cWqiNvAteq6htDXT7WyCvaYEH40MBcEqFyMHOaUwEF/GeQQnAshmALDSzMF6MGviv87mG3jLeb8KfwB5wsMIOL5gAUAAAAASUVORK5CYII=',
       'searchUrl': 'https://nzbfinder.ws/Movies?imdb=%nott%',
@@ -7057,6 +7064,553 @@ function getAnimeID(movie_id) {
   });
 }
 
+// Add this after the getAnimeID function (around line 23,750)
+function getLetterboxdData() {
+    console.log("IMDb Scout Mod (getLetterboxdData): Started.");
+
+    // Get IMDb ID
+    const imdbLink = document.querySelector('a[href*="imdb.com/title/"]');
+    if (!imdbLink) {
+        console.log("IMDb Scout Mod: No IMDb link found on Letterboxd page.");
+        return null;
+    }
+    const imdbID = imdbLink.href.match(/tt\d+/)?.[0];
+    if (!imdbID) {
+        console.log("IMDb Scout Mod: Could not extract IMDb ID from link.");
+        return null;
+    }
+
+    // Get Title
+    const titleElement = document.querySelector('span.name.js-widont.prettify');
+    const title = titleElement ? titleElement.textContent.trim() : null;
+    if (!title) {
+        console.log("IMDb Scout Mod: Could not extract title from Letterboxd page.");
+        return null;
+    }
+
+    // Get Year
+    const yearElement = document.querySelector('a[href^="/films/year/"]');
+    const year = yearElement ? yearElement.textContent.trim() : null;
+    if (!year) {
+        console.log("IMDb Scout Mod: Could not extract year from Letterboxd page.");
+        return null;
+    }
+
+    console.log(`IMDb Scout Mod: Extracted - ID: ${imdbID}, Title: ${title}, Year: ${year}`);
+    return { imdbID: imdbID.replace('tt', ''), title: title, year: year };
+}
+
+function performLetterboxdPage() {
+    console.log("IMDb Scout Mod (performLetterboxdPage): Processing Letterboxd page.");
+
+    const data = getLetterboxdData();
+    if (!data) {
+        console.warn("IMDb Scout Mod: Failed to extract data from Letterboxd.");
+        return;
+    }
+
+    const movie_id = data.imdbID;
+    const movie_title = data.title;
+    const movie_title_orig = data.title;
+    const movie_year = data.year;
+    const is_tv = false;
+    const is_movie = true;
+    const series_id = 'tt' + movie_id;
+    const season_id = '1';
+    const episode_id = '1';
+
+    // Add ratings bar BEFORE the icon bar and search bars
+    if (GM_config.get("ratings_cfg_metacritic") ||
+        GM_config.get("ratings_cfg_rotten") ||
+        GM_config.get("ratings_cfg_letterboxd") ||
+        GM_config.get("ratings_cfg_douban") ||
+        GM_config.get("ratings_cfg_allocine") ||
+        GM_config.get("ratings_cfg_anime")) {
+        // Create ratings container on Letterboxd
+        addLetterboxdRatingsContainer();
+        // Call external ratings with the Letterboxd flag
+        externalRatingsLetterboxd(movie_id, movie_title, movie_title_orig);
+    }
+
+    // Add icon bar
+    if (!GM_config.get("disable_iconsites")) {
+        addIconBarLetterboxd(movie_id, movie_title, movie_title_orig, movie_year);
+    }
+
+    // Create search link areas
+    addLetterboxdLinkAreas();
+
+    // Add searchable sites with a slight delay to ensure DOM is ready
+    if (!GM_config.get("disable_sites")) {
+        setTimeout(function() {
+            const header1 = document.getElementById('letterboxd_scout_header');
+            const header2 = document.getElementById('letterboxd_scout_second_header');
+            const header3 = document.getElementById('letterboxd_scout_third_header');
+
+            if (header1) {
+                perform(header1, movie_id, movie_title, movie_title_orig,
+                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
+            }
+
+            if (GM_config.get('load_second_bar_movie') && header2) {
+                perform(header2, movie_id, movie_title, movie_title_orig,
+                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
+            }
+
+            if (GM_config.get('load_third_bar_movie') && header3) {
+                perform(header3, movie_id, movie_title, movie_title_orig,
+                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
+            }
+        }, 200);
+    }
+}
+
+function addLetterboxdRatingsContainer() {
+    // Check if ratings container already exists
+    if ($('#letterboxd_ratings_container').length) {
+        return;
+    }
+
+    const synopsisSection = document.querySelector('.production-synopsis');
+    if (!synopsisSection) {
+        console.log("❌ IMDb Scout Mod (Letterboxd): Could not find production-synopsis section.");
+        return;
+    }
+
+    var img_px = GM_config.get("ratings_img_px");
+    // compensate sizes for compact mode (zoom 80%)
+    if (onReferencePage && GM_config.get('dark_compact_reference_view')) {
+        img_px = Math.round(parseInt(img_px) *1.2);
+    }
+
+    // Create ratings table
+    const table = $('<table>').attr('id', 'letterboxd_ratings_container').attr('style',
+        'display: flex; justify-content:center; align-items:center; text-align:center; ' +
+        'padding: 8px 10px; margin: 8px 0; background: #1a1a1a; border-radius: 6px; ' +
+        'color: #EEEEEE; font-family: Arial, sans-serif; width: 100%;'
+    ).append(
+        $('<tbody>').append(
+            $('<tr>')
+        )
+    );
+
+    // Insert after the synopsis section
+    $(synopsisSection).after(table);
+
+    // Metacritic ratings
+    if (GM_config.get("ratings_cfg_metacritic")) {
+        const td = $('<td>').attr('style', 'padding: 0 12px; vertical-align:middle; text-align:center; min-width: 60px;');
+        td.append($('<a>').addClass('MetaCritRatingUrl').attr({'title':'Metacritic', 'target': '_blank'}).css('display','block').append(
+            $('<img>').addClass('MetaCritRatingImg').attr('src', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAAElBMVEUAAABQUFDAwMDf399ubm6WlpaIZZrQAAAAAXRSTlMAQObYZgAAA3ZJREFUaN69mVFym0AQBVO6ARL8WxQ5gGulAyzGBwDL979K4tjmie2dmVKo8nxZpKbV83YFBH65dej/lv3PYbPqf9tVTw/29yggwq9nPfL1uwi9Xfv6GUTcz4r7owrzD2tHP2KIB3j/qMVQCPtvU/NZ7bSAEA9wy81dCaEhfIHcFDVCwRP43bBeQ0LRj+qCIQ7oB8FXYD8JnsKB+bFGRwH9PuHJFBjQNE3T+ndrKpgBtG8ppeuqdSwUIDCX/emz1uOLC6BASgWhq89gJfiS1spFjk81gQEDqC7KEYBYQENIgQAuYbqvq61wMARO6qYCAVyCtwSF+4XABGdjAihoBn+CLqW6wkiAImQEVGiLGbSLsYiGwlIFNMzQUjhqBq4BM6RCWwOcLcC1oqAQBMgGIG9muW7WgRHwl/SsNO4UjgQMBiDrTykoBC+C9k75VCoQkBvU/Vlgq6AQBCguhB/yawRQ2ISAXaDQBIBCVwIG7GEBoLBNkRl2CQAqlIC5NoBCpMLyDdAiUEDLSIWxAJg/wlxX0DIIwGuBZqBCJ4BWEechKOhguwUMmKCqoGMCYBuk5Cno0BZwRgSGgo4QwEWkwnpAG0H7iBlSQZ8dgKugj+MGAEtLQZ8CwPX1zVLIDuA0fwEu64aAwqVxACl9AbSgUMh1wLff5aSzQAcFFQDrIv0Tn7GrcwRQft8TQCEGpAIAhQBwAgAKNmCWgABQ8AEnABwF/Rb0a3wBAAo+oEuqOVLg+QDXo1ABpzTeBEhBWBVOqhuFeaOgg6oWp3VPQcd0GBcWR4ECvDJlV4ECBIQKMzYiLu+uwtXYiNoIngIEeIMxNJ4CBLSKulF1FSDQCaAUHYVSoDkCMLsKOB8tAAyNo6BihrrTtBVYHQF94yk4ESiERxTGCmB4RKEXADNAIYhAgOwpcAICzoECJzD+8x4rdABoHajgTsAHGFSIJ5BCU1F4NnYRANb9asNa+Binp4IEGKENmKUQCvTmkzApxAJSYAq2gABU6LMU/CXow+eRbVWg7SWAGbAdKwKjBKDAXwT7OwhQYTBOxXikCgUSuAICsHrGwH5MAAUQECAFqEAC+32F/sb85M8BqND/LpZgwjsSS0ESGV8vAVdBFrfpo3l6f+g1T1z7X1TtJOx+WRdV1B9X1B+XG+A+wk+9NiaB+nGh/Wde3hMSN/8BSXUWJsXAq8kAAAAASUVORK5CYII=').css({'height':img_px, 'width':img_px, 'display': 'block', 'margin': '0 auto'})
+        ));
+        td.append($('<div>').addClass('MetaCritRating scoutRatings').attr('title','Metascore').css({'font-weight': 'bold', 'font-size': '14px', 'margin-top': '2px'}).text("-"));
+        td.append($('<div>').addClass('MetaUserRating scoutRatings').attr('title','User score').css({'font-weight': 'bold', 'font-size': '14px', 'margin-top': '2px'}).text("-"));
+        $('#letterboxd_ratings_container').find('tr').append(td);
+    }
+
+    // Rotten Tomatoes ratings
+    if (GM_config.get("ratings_cfg_rotten")) {
+        // Tomatometer (Critics) - uses tomato icon
+        const td = $('<td>').attr('style', 'padding: 0 12px; vertical-align:middle; text-align:center; min-width: 60px;');
+        td.append($('<a>').addClass('RottCritRatingUrl').attr({'title':'Rotten Tomatoes - Tomatometer (Critics)', 'target': '_blank'}).css('display','block').append(
+            $('<img>').addClass('RottCritRatingImg').attr('src', 'data:image/png;base64,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').css({'height':img_px, 'width':img_px, 'display': 'block', 'margin': '0 auto'})
+        ));
+        td.append($('<div>').addClass('RottCritRating scoutRatings').attr('title','Tomatometer').css({'font-weight': 'bold', 'font-size': '14px', 'margin-top': '2px'}).text("-"));
+        $('#letterboxd_ratings_container').find('tr').append(td);
+
+        // Audience Score (Popcorn) - uses popcorn icon, SAME URL as Tomatometer
+        const td2 = $('<td>').attr('style', 'padding: 0 12px; vertical-align:middle; text-align:center; min-width: 60px;');
+        // Use the same class as Tomatometer so it gets the same URL
+        td2.append($('<a>').addClass('RottCritRatingUrl').attr({'title':'Rotten Tomatoes - Audience Score', 'target': '_blank'}).css('display','block').append(
+            $('<img>').addClass('RottUserRatingImg').attr('src', 'data:image/png;base64,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').css({'height':img_px, 'width':img_px, 'display': 'block', 'margin': '0 auto'})
+        ));
+        td2.append($('<div>').addClass('RottUserRating scoutRatings').attr('title','Audience score').css({'font-weight': 'bold', 'font-size': '14px', 'margin-top': '2px'}).text("-"));
+        $('#letterboxd_ratings_container').find('tr').append(td2);
+    }
+
+    // Letterboxd ratings
+    if (GM_config.get("ratings_cfg_letterboxd")) {
+        const td = $('<td>').attr('style', 'padding: 0 12px; vertical-align:middle; text-align:center; min-width: 60px;');
+        td.append($('<a>').addClass('LetterboxdUserRatingUrl').attr({'title':'Letterboxd', 'target': '_blank'}).css('display','block').append(
+            $('<img>').addClass('LetterboxdUserRatingImg').attr('src', 'data:image/png;base64,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').css({'height':img_px, 'width':img_px, 'display': 'block', 'margin': '0 auto'})
+        ));
+        td.append($('<div>').addClass('LetterboxdUserRating scoutRatings').attr('title','Users rating').css({'font-weight': 'bold', 'font-size': '14px', 'margin-top': '2px'}).text("-"));
+        $('#letterboxd_ratings_container').find('tr').append(td);
+    }
+
+    // Add ratings color styling
+    var styles = '.scoutRatings { font-weight: bold; }';
+    GM_addStyle(styles);
+}
+
+function externalRatingsLetterboxd(imdbid, title, title_orig) {
+    // Get Letterboxd ratings
+    if (GM_config.get("ratings_cfg_letterboxd")) {
+        const url = "https://letterboxd.com/imdb/" + imdbid;
+        $('.LetterboxdUserRatingUrl').attr('href', url);
+        getLetterboxdRatings(imdbid,
+            'data:image/png;base64,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',
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAALVBMVEUAAAAgKDBgYGCgoKAA4FSpqamrq6ujo6P8/v3MzMwE6VixYRGvr6+NjY3/zZqwsLC2s7NwAAAAAXRSTlMAQObYZgAAAx9JREFUaN7tmT1r21AUhuN/oNctwaZ0sKBQSimYC4KOBYGhydaqg+liBBc8FlQ0FA/O1NUUCpn7sQcKHkK3tHugkMFz/keva8tH55hYco6KnJBnNLyPz8H3y/fu/T/AUGQJr1y6gQ145eIKBUqg+HoqQpHnBpnXGbAFyrxD0QA1IfO6ErAtnq4Ah1rg6TpwiAJ0JeBaqAWsA10PqEkA6qAugVeVANemIkGjRoG3IwIouCWCBhR4d4JqBKhVAC5o+Y7HIGY/0vTgHMRxYO3zyVWCI3/BOPtgmoaO9ABL2oE1xgS2KwSU54ZpEv6j92GZt2YBGfKCpk9gzoXLLw0jzAlMRjDJCah/ogPggcuvDCcA9mOzIhYCaoCamIY55k3EhggGUtDyGZ2sACph3+QJpKDpc1wBjBFiLugKgS/oJFzQu8cFZsgFLSl4Egq+G06QCRrUQZ5LUcFhXwq6THAkBdFXLngZxcIwYAKZfxa95oL30RchGG4UPIrecsGvNUGQF7TWBX0u+Ba92UpwKQS9KOobguaDtxA01wVRUqngUAoc3QLB2c0XJFpByZ9x8zggoisGkld+JL6SgoLJVDgXjHo2FqwHZ3I9MIJBwYoUcnrrP8LmRfVpKPgtBeAC2cM4EYK2XJWL9oULnn+HQHQgBJA700O+HpzT1kibIxPwEgBewghAwBd1KYDYnVkJKRz5vWkIIaDhTKec+0l+d3d8XhksuIAMlHf8yU4oLwBmsBMpIAPlHbM0deWnJ8j4ZK2xNp6AC4iPLj5Gjtnp6U/kaB8bdkhDJefE2s/Kd4IqBLX/8bzZgl25wdAIduQiag+1X8YpBfobTb1Af6vbqP1iWnG3rhGonwf0DxTKErSvPJ72maeKly5NE16Vr32EIq998SSDIl+6DeW78V4ZdHGSyPCu8hfYVeoYJ6xJswAAAABJRU5ErkJggg=='
+        );
+    }
+
+    // Get Metacritic ratings from IMDb
+    if (GM_config.get("ratings_cfg_metacritic")) {
+        getMetacriticRatings_IMDb(imdbid,
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACABAMAAAAxEHz4AAAAElBMVEUAAABQUFDAwMDf399ubm6WlpaIZZrQAAAAAXRSTlMAQObYZgAAA3ZJREFUaN69mVFym0AQBVO6ARL8WxQ5gGulAyzGBwDL979K4tjmie2dmVKo8nxZpKbV83YFBH65dej/lv3PYbPqf9tVTw/29yggwq9nPfL1uwi9Xfv6GUTcz4r7owrzD2tHP2KIB3j/qMVQCPtvU/NZ7bSAEA9wy81dCaEhfIHcFDVCwRP43bBeQ0LRj+qCIQ7oB8FXYD8JnsKB+bFGRwH9PuHJFBjQNE3T+ndrKpgBtG8ppeuqdSwUIDCX/emz1uOLC6BASgWhq89gJfiS1spFjk81gQEDqC7KEYBYQENIgQAuYbqvq61wMARO6qYCAVyCtwSF+4XABGdjAihoBn+CLqW6wkiAImQEVGiLGbSLsYiGwlIFNMzQUjhqBq4BM6RCWwOcLcC1oqAQBMgGIG9muW7WgRHwl/SsNO4UjgQMBiDrTykoBC+C9k75VCoQkBvU/Vlgq6AQBCguhB/yawRQ2ISAXaDQBIBCVwIG7GEBoLBNkRl2CQAqlIC5NoBCpMLyDdAiUEDLSIWxAJg/wlxX0DIIwGuBZqBCJ4BWEechKOhguwUMmKCqoGMCYBuk5Cno0BZwRgSGgo4QwEWkwnpAG0H7iBlSQZ8dgKugj+MGAEtLQZ8CwPX1zVLIDuA0fwEu64aAwqVxACl9AbSgUMh1wLff5aSzQAcFFQDrIv0Tn7GrcwRQft8TQCEGpAIAhQBwAgAKNmCWgABQ8AEnABwF/Rb0a3wBAAo+oEuqOVLg+QDXo1ABpzTeBEhBWBVOqhuFeaOgg6oWp3VPQcd0GBcWR4ECvDJlV4ECBIQKMzYiLu+uwtXYiNoIngIEeIMxNJ4CBLSKulF1FSDQCaAUHYVSoDkCMLsKOB8tAAyNo6BihrrTtBVYHQF94yk4ESiERxTGCmB4RKEXADNAIYhAgOwpcAICzoECJzD+8x4rdABoHajgTsAHGFSIJ5BCU1F4NnYRANb9asNa+Binp4IEGKENmKUQCvTmkzApxAJSYAq2gABU6LMU/CXow+eRbVWg7SWAGbAdKwKjBKDAXwT7OwhQYTBOxXikCgUSuAICsHrGwH5MAAUQECAFqEAC+32F/sb85M8BqND/LpZgwjsSS0ESGV8vAVdBFrfpo3l6f+g1T1z7X1TtJOx+WRdV1B9X1B+XG+A+wk+9NiaB+nGh/Wde3hMSN/8BSXUWJsXAq8kAAAAASUVORK5CYII=',
+            'data:image/png;base64,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'
+        );
+    }
+
+    // Get Rotten Tomatoes ratings using OMDb
+    if (GM_config.get("ratings_cfg_rotten")) {
+        const key = GM_config.get("ratings_cfg_omdb_apikey") || 'f17eacb0';
+        // Use the tomato icon for Tomatometer (first param is meta_icon which we don't use, then rott_rotten, rott_certified, rott_fresh, rott_user_up, rott_user_down)
+        getRTandMetaRatings_OMDb(key, imdbid,
+            'data:image/png;base64,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', // rott_rotten
+            'data:image/png;base64,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', // rott_certified
+            'data:image/png;base64,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', // rott_fresh
+            'data:image/png;base64,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', // rott_user_up
+            'data:image/png;base64,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' // rott_user_down
+        );
+    }
+}
+
+
+function getLetterboxdData() {
+    console.log("IMDb Scout Mod (getLetterboxdData): Started.");
+
+    // Get IMDb ID
+    const imdbLink = document.querySelector('a[href*="imdb.com/title/"]');
+    if (!imdbLink) {
+        console.log("IMDb Scout Mod: No IMDb link found on Letterboxd page.");
+        return null;
+    }
+    const imdbID = imdbLink.href.match(/tt\d+/)?.[0];
+    if (!imdbID) {
+        console.log("IMDb Scout Mod: Could not extract IMDb ID from link.");
+        return null;
+    }
+
+    // Get Title
+    const titleElement = document.querySelector('span.name.js-widont.prettify');
+    const title = titleElement ? titleElement.textContent.trim() : null;
+    if (!title) {
+        console.log("IMDb Scout Mod: Could not extract title from Letterboxd page.");
+        return null;
+    }
+
+    // Get Year
+    const yearElement = document.querySelector('a[href^="/films/year/"]');
+    const year = yearElement ? yearElement.textContent.trim() : null;
+    if (!year) {
+        console.log("IMDb Scout Mod: Could not extract year from Letterboxd page.");
+        return null;
+    }
+
+    console.log(`IMDb Scout Mod: Extracted - ID: ${imdbID}, Title: ${title}, Year: ${year}`);
+    return { imdbID: imdbID.replace('tt', ''), title: title, year: year };
+}
+
+
+function addIconBarLetterboxd(movie_id, movie_title, movie_title_orig, movie_year) {
+    // Find the production-synopsis section
+    const synopsisSection = document.querySelector('.production-synopsis');
+    if (!synopsisSection) {
+        console.log("❌ IMDb Scout Mod (Letterboxd): Could not find production-synopsis section.");
+        return;
+    }
+
+    // Check if icon bar already exists
+    if ($('#letterboxd_scout_iconsheader').length) {
+        return;
+    }
+
+    var p = $('<p />').attr('id', 'letterboxd_scout_iconsheader').css({
+        'padding': '6px 10px',
+        'margin': '8px 0',
+        'background': '#1a1a1a',
+        'border-radius': '6px',
+        'overflow': 'hidden',
+        'color': '#EEEEEE',
+        'font-family': 'Arial, sans-serif',
+        'clear': 'both',
+        'display': 'block',
+        'line-height': '28px',
+        'min-height': '32px'
+    });
+
+    // Insert after the synopsis section
+    $(synopsisSection).after(p);
+
+    // Add icons
+    $.each(icon_sites, async function(index, site) {
+        if (site['show']) {
+            site = await replaceSearchUrlParams(site, movie_id, movie_title, movie_title_orig, movie_year);
+            var search_url = site.searchUrl;
+            var image = getFavicon(site).css({
+                'margin': '2px 3px 2px 3px',
+                'display': 'inline-block',
+                'vertical-align': 'middle'
+            });
+            var html = $('<a />').attr('href', search_url).attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
+
+            // Handle POST method sites
+            if ('mPOST' in site) {
+                var form_name = site['name'] + '-iconform';
+                form_name = form_name.replace(/\s|\.|\(|\)/g, '-');
+                var placebo_url = new URL(site['searchUrl']).origin;
+                html = $('<a />').attr('href', placebo_url).attr('onclick', "document.getElementById('"+form_name+"').submit(); return false;").attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
+
+                const post_data = site.mPOST;
+                var data = (post_data.match('{')) ? post_data.replace(/\+/g, ' ') : '{key:"' + post_data.replace(/&/g, '"},{key:"').replace(/=/g, '",value:"').replace(/\+/g, ' ') + '"}';
+                var addform = $('<form></form>');
+                addform.attr('id', form_name);
+                addform.attr('action', search_url);
+                addform.attr('method', 'post');
+                addform.attr('style', 'display: none;');
+                addform.attr('target', '_blank');
+                addform.attr('rel', 'noreferrer');
+
+                if (data.startsWith('{key:')) {
+                    const dataArray = (new Function("return [" + data + "];")());
+                    dataArray.forEach(function (item) {
+                        let addinput = $("<input>");
+                        addinput.attr('type', 'text');
+                        addinput.attr('name', item.key);
+                        addinput.attr('value', item.value);
+                        addform.append(addinput);
+                        $('body').append(addform);
+                    });
+                } else {
+                    data = JSON.parse(data);
+                    for (const name in data) {
+                        let addinput = $("<input>");
+                        addinput.attr('type', 'text');
+                        addinput.attr('name', name);
+                        addinput.attr('value', data[name]);
+                        addform.append(addinput);
+                        $('body').append(addform);
+                    }
+                }
+            }
+            $('#letterboxd_scout_iconsheader').append(html);
+        }
+    });
+
+    // Add "Open All" button if not removed
+    if (!GM_config.get("remove_openall") && GM.openInTab) {
+        setTimeout(() => {
+            var aopenall = $('<a />').text('Open All').prepend("&nbsp;").attr('href', 'javascript:;').attr('style', 'font-weight:bold;font-size:11px;font-family: Calibri, Verdana, Arial, Helvetica, sans-serif; display: inline-block; vertical-align: middle; margin-left: 5px;');
+            aopenall.click(function() {
+                $('.iconbar_icon').each(function() {
+                    GM.openInTab($(this).attr('href'));
+                });
+            });
+            $('#letterboxd_scout_iconsheader').append(aopenall);
+        }, 300);
+    }
+}
+
+
+function getIconsLinkAreaLetterboxd() {
+    // Check if it already exists
+    if ($('#letterboxd_scout_iconsheader').length) {
+        return $('#letterboxd_scout_iconsheader');
+    }
+
+    // Find a good insertion point on Letterboxd pages
+    var filmHeader = document.querySelector('.film-header');
+    if (!filmHeader) {
+        console.log("❌ IMDb Scout Mod (Letterboxd): Could not find film header.");
+        return null;
+    }
+
+    var p = $('<p />').attr('id', 'letterboxd_scout_iconsheader').css({
+        'padding': '8px 12px',
+        'margin': '10px 0',
+        'background': '#1a1a1a',
+        'border-radius': '6px',
+        'overflow': 'hidden',
+        'color': '#EEEEEE',
+        'font-family': 'Arial, sans-serif',
+        'clear': 'both',
+        'display': 'block'
+    });
+
+    $(filmHeader).after(p);
+    return $('#letterboxd_scout_iconsheader');
+}
+
+
+
+function addLetterboxdLinkAreas() {
+    // Find the container after the synopsis section
+    const synopsisSection = document.querySelector('.production-synopsis');
+    if (!synopsisSection) {
+        console.log("❌ IMDb Scout Mod (Letterboxd): Could not find production-synopsis section.");
+        return;
+    }
+
+    // Main search bar - all icons in one horizontal flow
+    if ($('#letterboxd_scout_header').length === 0) {
+        const p = $('<div />').attr('id', 'letterboxd_scout_header').css({
+            'padding': '6px 10px',
+            'margin': '8px 0',
+            'background': '#2a2a2a',
+            'border-radius': '6px',
+            'overflow': 'hidden',
+            'color': '#EEEEEE',
+            'font-family': 'Arial, sans-serif',
+            'clear': 'both',
+            'display': 'block',
+            'line-height': '32px',
+            'min-height': '32px'
+        });
+
+        // Create a single container for ALL icons with flex display
+        const allIcons = $('<div />').attr('id', 'letterboxd_scout_all_icons').css({
+            'display': 'flex',
+            'flex-wrap': 'wrap',
+            'align-items': 'center',
+            'gap': '2px',
+            'width': '100%'
+        });
+
+        // Add state containers but make them flex items
+        $.each(valid_states, function(i, name) {
+            const container = $('<span />').attr('id', 'letterboxd_scout_' + name).css({
+                'display': 'flex',
+                'flex-wrap': 'wrap',
+                'align-items': 'center',
+                'gap': '2px'
+            });
+            allIcons.append(container);
+        });
+
+        p.append(allIcons);
+        $(synopsisSection).after(p);
+    }
+
+    // 2nd bar (optional)
+    if (GM_config.get('load_second_bar_movie') && $('#letterboxd_scout_second_header').length === 0) {
+        const p2 = $('<div />').attr('id', 'letterboxd_scout_second_header').css({
+            'padding': '6px 10px',
+            'margin': '8px 0',
+            'background': '#2a2a2a',
+            'border-radius': '6px',
+            'overflow': 'hidden',
+            'color': '#EEEEEE',
+            'font-family': 'Arial, sans-serif',
+            'clear': 'both',
+            'display': 'block',
+            'line-height': '32px',
+            'min-height': '32px'
+        });
+
+        const allIcons2 = $('<div />').attr('id', 'letterboxd_scout_second_all_icons').css({
+            'display': 'flex',
+            'flex-wrap': 'wrap',
+            'align-items': 'center',
+            'gap': '2px',
+            'width': '100%'
+        });
+
+        $.each(valid_states, function(i, name) {
+            const container = $('<span />').attr('id', 'letterboxd_scout_second_' + name).css({
+                'display': 'flex',
+                'flex-wrap': 'wrap',
+                'align-items': 'center',
+                'gap': '2px'
+            });
+            allIcons2.append(container);
+        });
+
+        p2.append(allIcons2);
+
+        if ($('#letterboxd_scout_header').length) {
+            $('#letterboxd_scout_header').after(p2);
+        } else {
+            $(synopsisSection).after(p2);
+        }
+    }
+
+    // 3rd bar (optional)
+    if (GM_config.get('load_third_bar_movie') && $('#letterboxd_scout_third_header').length === 0) {
+        const p3 = $('<div />').attr('id', 'letterboxd_scout_third_header').css({
+            'padding': '6px 10px',
+            'margin': '8px 0',
+            'background': '#2a2a2a',
+            'border-radius': '6px',
+            'overflow': 'hidden',
+            'color': '#EEEEEE',
+            'font-family': 'Arial, sans-serif',
+            'clear': 'both',
+            'display': 'block',
+            'line-height': '32px',
+            'min-height': '32px'
+        });
+
+        const allIcons3 = $('<div />').attr('id', 'letterboxd_scout_third_all_icons').css({
+            'display': 'flex',
+            'flex-wrap': 'wrap',
+            'align-items': 'center',
+            'gap': '2px',
+            'width': '100%'
+        });
+
+        $.each(valid_states, function(i, name) {
+            const container = $('<span />').attr('id', 'letterboxd_scout_third_' + name).css({
+                'display': 'flex',
+                'flex-wrap': 'wrap',
+                'align-items': 'center',
+                'gap': '2px'
+            });
+            allIcons3.append(container);
+        });
+
+        p3.append(allIcons3);
+
+        if ($('#letterboxd_scout_second_header').length) {
+            $('#letterboxd_scout_second_header').after(p3);
+        } else if ($('#letterboxd_scout_header').length) {
+            $('#letterboxd_scout_header').after(p3);
+        } else {
+            $(synopsisSection).after(p3);
+        }
+    }
+
+    // Force flex layout on all containers
+    GM_addStyle(`
+        #letterboxd_scout_all_icons,
+        #letterboxd_scout_second_all_icons,
+        #letterboxd_scout_third_all_icons {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 2px !important;
+            width: 100% !important;
+        }
+        #letterboxd_scout_header span,
+        #letterboxd_scout_second_header span,
+        #letterboxd_scout_third_header span {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 2px !important;
+        }
+        #letterboxd_scout_header a,
+        #letterboxd_scout_second_header a,
+        #letterboxd_scout_third_header a {
+            display: inline-block !important;
+        }
+    `);
+}
+
+
+
+
+
 function getMetacriticID1(movie_id) {
   console.log("IMDb Scout Mod (getMetacriticID1): Started.");
   return new Promise(resolve => {
@@ -7304,22 +7858,29 @@ function addLink(elem, site, state, scout_tick) {
       });
     }
   }
-  // Add links to IMDb page.
-  var in_element_two = ('inSecondSearchBar' in site) ? site['inSecondSearchBar'] : false;
-  var in_element_three = ('inThirdSearchBar' in site) ? site['inThirdSearchBar'] : false;
-  if (!onSearchPage && in_element_two) {
-    $('#imdbscoutsecondbar_' + state).append(link).append(' ');
-  } else if (!onSearchPage && in_element_three) {
-    $('#imdbscoutthirdbar_' + state).append(link).append(' ');
-  } else if (!onSearchPage) {
-    $('#imdbscout_' + state).append(link).append(' ');
-  } else if (!in_element_three && !in_element_two) {
-    $('#imdbscout_' + state + scout_tick).append(link);
-  } else if (in_element_two) {
-    $('#imdbscout2_' + state + scout_tick).append(link);
-  } else {
-    $('#imdbscout3_' + state + scout_tick).append(link);
-  }
+    // Add links to IMDb page or Letterboxd page.
+    var in_element_two = ('inSecondSearchBar' in site) ? site['inSecondSearchBar'] : false;
+    var in_element_three = ('inThirdSearchBar' in site) ? site['inThirdSearchBar'] : false;
+
+    // Check if we're on Letterboxd
+    const isLetterboxd = window.location.hostname === 'letterboxd.com';
+
+    if (!onSearchPage && in_element_two) {
+        const targetId = isLetterboxd ? '#letterboxd_scout_second_' + state : '#imdbscoutsecondbar_' + state;
+        $(targetId).append(link).append(' ');
+    } else if (!onSearchPage && in_element_three) {
+        const targetId = isLetterboxd ? '#letterboxd_scout_third_' + state : '#imdbscoutthirdbar_' + state;
+        $(targetId).append(link).append(' ');
+    } else if (!onSearchPage) {
+        const targetId = isLetterboxd ? '#letterboxd_scout_' + state : '#imdbscout_' + state;
+        $(targetId).append(link).append(' ');
+    } else if (!in_element_three && !in_element_two) {
+        $('#imdbscout_' + state + scout_tick).append(link);
+    } else if (in_element_two) {
+        $('#imdbscout2_' + state + scout_tick).append(link);
+    } else {
+        $('#imdbscout3_' + state + scout_tick).append(link);
+    }
 
   if (onSearchPage) {
     // Hack: Convert GET link to button to deal with same-origin problem (icons mode only).
@@ -8155,6 +8716,28 @@ function performPage() {
       GM.notification("Request timed out.", "IMDb Scout Mod (performPage)");
     }
   });
+}
+
+// Add this after the performPage function
+function initializeScout() {
+    // Check if we're on Letterboxd
+    if (window.location.hostname === 'letterboxd.com' && window.location.pathname.startsWith('/film/')) {
+        console.log("✅ IMDb Scout Mod: Letterboxd page detected. Starting Letterboxd mode.");
+        // Wait a moment for the page to fully render
+        setTimeout(performLetterboxdPage, 500);
+        return;
+    }
+
+    // Otherwise, proceed with the normal IMDb logic
+    if (!onSearchPage && GM_config.get('loadmod_on_start_movie')) {
+        $('#ipc-wrap-background-id').remove();
+        performPage();
+    } else if (onSearchPage && GM_config.get('loadmod_on_start_search')) {
+        performSearch();
+    } else {
+        $('#ipc-wrap-background-id').remove();
+        displayButton();
+    }
 }
 
 //==============================================================================
@@ -10600,6 +11183,7 @@ function getRTandMetaRatings_OMDb(key, imdbid, meta_icon, rott_rotten, rott_cert
       } else {
         return;
       }
+      // Use the tomato icon for Tomatometer
       if (rott_crit <= 59) {
         $('.RottCritRatingImg').attr('src', rott_rotten);
       } else if (rott_crit > 59) {
@@ -10608,11 +11192,6 @@ function getRTandMetaRatings_OMDb(key, imdbid, meta_icon, rott_rotten, rott_cert
       if (rott_crit >= 0) {
         $('.RottCritRating').text(rott_crit);
       }
-// Metacritic disabled in this func as it can overwrite "must see" badge [v19.2]
-//       if (meta_crit >= 0) {
-//         $('.MetaCritRatingImg').attr('src', meta_icon);
-//         $('.MetaCritRating').text(meta_crit);
-//       }
       ratingsColor();
     },
     onerror: function() {
@@ -10689,6 +11268,7 @@ async function getRotten(rott_url, rott_rotten, rott_certified, rott_fresh, rott
       if (rott_user >= 0) {
         $('.RottUserRating').text(rott_user);
       }
+      // Use tomato icon for Tomatometer
       if (rott_state.match("certified")) {
         $('.RottCritRatingImg').attr('src', rott_certified);
       } else if (rott_state.match("rotten")) {
@@ -10696,6 +11276,7 @@ async function getRotten(rott_url, rott_rotten, rott_certified, rott_fresh, rott
       } else if (rott_state.match("fresh")) {
         $('.RottCritRatingImg').attr('src', rott_fresh);
       }
+      // Use popcorn icon for Audience Score
       if (rott_user > 59) {
         $('.RottUserRatingImg').attr('src', rott_user_up);
       } else if (rott_user <= 59 && rott_user >= 0) {
@@ -10999,19 +11580,27 @@ async function getAnilistRatings(anilist_id, anime_icon, titles, year, run = 1) 
 }
 
 function ratingsColor() {
-  if (GM_config.get("ratings_cfg_color")) {
-    const ref_high = parseInt(GM_config.get('ratings_cfg_color_scheme').split(',')[0], 10);
-    const ref_low  = parseInt(GM_config.get('ratings_cfg_color_scheme').split(',')[1], 10);
-    $( ".scoutRatings").each(function(index) {
-      if ($(this).text() > ref_high) {
-        $(this).attr('style', 'color: #00e600 !important; font-weight: bold !important;');
-      } else if ($(this).text() <= ref_high && $(this).text() > ref_low) {
-        $(this).attr('style', 'color: #f5c20a !important; font-weight: bold !important;');
-      } else if ($(this).text() <= ref_low && $(this).text() >= 0) {
-        $(this).attr('style', 'color: #e60000 !important; font-weight: bold !important;');
-      }
-    });
-  }
+    if (GM_config.get("ratings_cfg_color")) {
+        const ref_high = parseInt(GM_config.get('ratings_cfg_color_scheme').split(',')[0], 10);
+        const ref_low  = parseInt(GM_config.get('ratings_cfg_color_scheme').split(',')[1], 10);
+
+        $( ".scoutRatings").each(function(index) {
+            // Check if this is a Metacritic rating
+            if ($(this).hasClass('MetaCritRating')) {
+                // Always show Metascore in yellow
+                $(this).attr('style', 'color: #f5c20a !important; font-weight: bold !important;');
+            } else {
+                // Other ratings use the normal color scheme
+                if ($(this).text() > ref_high) {
+                    $(this).attr('style', 'color: #00e600 !important; font-weight: bold !important;');
+                } else if ($(this).text() <= ref_high && $(this).text() > ref_low) {
+                    $(this).attr('style', 'color: #f5c20a !important; font-weight: bold !important;');
+                } else if ($(this).text() <= ref_low && $(this).text() >= 0) {
+                    $(this).attr('style', 'color: #e60000 !important; font-weight: bold !important;');
+                }
+            }
+        });
+    }
 }
 
 //==============================================================================
@@ -12710,19 +13299,19 @@ function startIMDbScout() {
 }
 
 if (onReferencePage) {
-  console.log("✅ IMDb Scout Mod (Start): Starting Reference page: " + location.href);
-  document.events.on('bodyloaded', () => { darkReferenceStyles(); });
-  if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
-    document.addEventListener('DOMContentLoaded', startReference, { once: true });
-  } else { // counter reflow on Chromium based browsers
-      document.addEventListener('DOMContentLoaded', () => {setTimeout(startReference, 400);}, { once: true });
-  }
-} else {
-    console.log("✅ IMDb Scout Mod (Start): Starting Redesigned or List page: " + location.href);
+    console.log("✅ IMDb Scout Mod (Start): Starting Reference page: " + location.href);
+    document.events.on('bodyloaded', () => { darkReferenceStyles(); });
     if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
-      document.addEventListener('DOMContentLoaded', startRedesign, { once: true });
-    } else { // counter reflow on Chromium based browsers
-        document.addEventListener('DOMContentLoaded', () => {setTimeout(startRedesign, 400);}, { once: true });
+        document.addEventListener('DOMContentLoaded', startReference, { once: true });
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {setTimeout(startReference, 400);}, { once: true });
+    }
+} else {
+    console.log("✅ IMDb Scout Mod (Start): Starting page: " + location.href);
+    if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+        document.addEventListener('DOMContentLoaded', initializeScout, { once: true });
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {setTimeout(initializeScout, 400);}, { once: true });
     }
 }
 
