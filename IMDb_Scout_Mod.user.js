@@ -4889,7 +4889,7 @@ var usenet_sites = [
       'TV': true},
   {   'name': 'Cinema-of-Usenet (DE)',
       'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAAGFBMVEUAAACl0uPA4++Mwtzg9vprrM48irybv8hv/yhMAAAAAXRSTlMAQObYZgAAAPRJREFUOMvd0j1PwzAQBuDjK6ycrcJam/yB1EpYS3RS10iWw9rlPBNUxN+ntRdsHercvpN1j+7OlgxXmBB4Esq3po88M9S5w5/v2EQeatAfyzNAw91T1dC/4WkBb8YSnFsQEtD6b73xbkkzHhRtK1CfCbAtwb2ofDIlsMM2n75IACHs0YoQPar/AKV6w147CR7nELwIqxhZghvTxyiDDrM4yqIbZDC6BymjQbc/A7aAw3FUhvv36u+4kIF25fbXTk+pgbZQZLUxQ9pA6xIWa810ujfVH5RGawA6NFCF6NijtCsm5a3UjojC+w9EZPQeRNnBpeYXqdcrOKNNm/MAAAAASUVORK5CYII=',
-      'searchUrl': 'https://www.cinema-of-usenet.to/search/22178/?q=%search_string%&o=relevance',
+      'searchUrl': 'https://www.cinema-of-usenet.to/search/search&keywords=%search_string_orig%',
       'loggedOutRegex': /Cloudflare|Ray ID|Passwort vergessen/,
       'matchRegex': /Keine Ergebnisse gefunden/,
       'both': true},
