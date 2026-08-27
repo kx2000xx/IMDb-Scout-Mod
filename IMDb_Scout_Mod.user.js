@@ -4203,7 +4203,7 @@ var private_sites = [
       'loggedOutRegex': /Cloudflare|Ray ID|Forgot your password|Service Unavailable/,
       'matchRegex': /fa-circle text-red/,
       'positiveMatch': true,
-      'both': true},        
+      'both': true},
   {   'name': 'Ztracker',
       'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAACsklEQVQozwXBS29UZRgA4Pf9buecOXOhEwrFaWKKBLVyCQgYQliIGAEXLl2YmLiRtYkL97rwJ7hwZ1zhwjQkxhgbw50EKpXgUNoUCrQQOk5P51zmO9/t9Xnwx7zhPQ0zbKWoNcsyybj94xd36D2Fie/tFkCoNTLglWZbozFLJAqBnTaNdei0fdqsF/4Ks0fx95/18l0y1hOEOPKeguAYK8k//lpdnedKQrqDKCAgqkQioxfPqNyk5VvBMmh3GQElCQSn+MmL8tgh9eBhWLgOPCIhEDmsrUBtYDwIG/d8/0G4PVd3p9XkHsaZFE+WaOW+kwmuLUPawvtb9M8V/eW3yc4puPo05GM6/mF8+KxMW1FtvODEL/6gogSerqoLn/o3D0D/b0+MtyfYtUvGMizW6ck10191z/u2NxslERPOYKdLZ8+7ygbr8NEiB/I/fVOZcZA70P5HUIMd0EZtKbDBwIkiF82OMc4Lzn675IcvAzmgGCAHqgEIIAGf0dtnmjd+LWwWRFWppOXm52BzXS1cyRFBj3xnV7xtta+IdyFVYjwK2cCv3a5mjgkB4KtCLN5045GPGkLnjiGawqsOl118fb/cd0pd/n5Ubrh3PmjIBgkUtLoUFUWotnRzVxxcmN7Hh48JW/Ld08neA7x0vnc03n84evyvmX4rwu9W27pIPNVL98hYPnuEOl1fjVQ2tP07/NGt6pOvJu78WWSbdn05vP9ZylwdIYm0KQ6eiE+cjqNIeaOcUVM9mTTZ5CwK5HuPqCqjc59PvHpmxMtXNNnhrhYIvCyDEqIscH6uAMSVRf3RF2leWgo4c1LIBkUt4L0LcrKbVGNSSm1v+yjixoALgBimZlR7J9d1CIGYhACQthkbZtZ7rGtea1YbyHMqStIlvPaG9J5TYGXpnAdjaCszwfP/ATkkhPpxifIUAAAAAElFTkSuQmCC',
       'searchUrl': 'http://ztracker.cc/browse_old.php?keywords=%tt%&search_type=t_description&cat=0',
@@ -6606,6 +6606,10 @@ var icon_sites_main = [
   {   'name': 'YouTube (Piped)',
       'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAP1BMVEUAAAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/////8PD/0ND/wMD/kJD/gID/UFD/QED/ICD/EBBwI9TdAAAACnRSTlMAwECAMBDwsGAgE90AyAAAAHFJREFUOMvVkkkOgCAMRYXKYBEH9P5nVdCoIdImuuJt/1t0+E09KGkBxAMAK9UVtwJfEe2ZayygD8NgEZMEJIh5RwlxUIk3cy7ITHDDwgiun2hhxwdKSIzrP8GHD0MSa7KHYk/NPYt9N1sYrnJcaathA2rBFn/0Nk1kAAAAAElFTkSuQmCC',
       'searchUrl': 'https://piped.kavin.rocks/results?search_query="%search_string%"+%year%+trailer',
+      'showByDefault': false},
+  {   'name': 'X (Twitter)',
+      'icon': 'https://abs.twimg.com/favicons/twitter.3.ico',
+      'searchUrl': 'https://x.com/search?q=%search_string_orig%%20%year%&src=typed_query',
       'showByDefault': false}
 ];
 
