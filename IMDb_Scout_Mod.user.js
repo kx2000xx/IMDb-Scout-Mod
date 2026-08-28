@@ -5509,12 +5509,13 @@ var subs_sites = [
       'inSecondSearchBar': true,
       'TV': true},
   {   'name': 'Subdl',
-      'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwAgMAAAAqbBEUAAAADFBMVEUAAAD+7ioyMjOlmy53V6WFAAAAAXRSTlMAQObYZgAAALhJREFUKM9t0rERgzAMBVBTMAL7MAIFhrsUzh7skRHcKEfpUbxEdsgR83Xin2NU+YEksGWH6Cd3xeD9bOvel7B3HqHrTjFqhWJmFvKQxbzeMLEERTX8FVofRNLZAXiI7CfQbFNMN0hBMRCzIq5fojwn3gZ8J0P4m0VexCqR8J/dwA5ooB0MiyRrXUKiwjoQG4AtPHOo99Oi47bHGo7A8eIQedbHkRUcyf+wnKEdMEfPvPq6tBeJV+wHsSepYe5VEiIAAAAASUVORK5CYII=',
-      'searchUrl': 'https://subdl.com/search/%tt%',
-      'loggedOutRegex': /Cloudflare|Ray ID/,
-      'matchRegex': /No results found/,
-      'inSecondSearchBar': true,
-      'both': true},
+    'icon': 'https://subdl.com/favicon.ico',
+    'searchUrl': 'https://api3.subdl.com/auto?query=%search_string_orig%',
+    'matchRegex': /"results":\[\]/,
+    'positiveMatch': false,
+    'inSecondSearchBar': true,
+    'both': true,
+    'rateLimit': 1000},
   {   'name': 'SubHD (CN)',
       'icon': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAA21BMVEUAAAAAie4BiewCie0Bie0DiesBie4BiewCiewAie4AiO0BiewBiO0Cie4CiewCiewFiOsFiOsAkOQAkvQAgNABie0CiOwBiewBiewBiOwBiOwDiukAh+EAgN8Biu4Aie7///8FjO7y+f6p2PqXz/nf8P3K5/y03fpquvZBp/MrnfEOkO/1+//u9/643vul1vmd0vl8w/c6pPI0ofIXlPD4/P/p9v7T6/y73/uj1PmQzPiJyPeDxfdetfVZs/ROrfQ4o/Ivn/L5/P/U6/zO6PzB4/t3wPYkmvEimfDDD6utAAAAH3RSTlMA+MujrUzstn3+/d7SqJGJNC8NBQS2f+fU1LlKERDte24wGgAAAXlJREFUOMt1k9eagkAMhSOgYO+udQcEUbH3stbt7/9EOyMhsCr/1fmSQwoBQAoNTVal2itjsZpUlrVGAYLk0xF2RySdp3Qpm2BPSGRLmFdYCIrryLJQsrf+WP9pFzFHmhH9gznuWseBH0nz/Wj+xUZ3ac8M2qUAUU/PhzrRJUcUNFRGhyeG2113LRwzz6CBjOrMw19L4XzjauSVkKGMSoTnrvzkcoFhFSRUlm84WZZ1xbAEKVQzbvjos3tSkPSW1AVrs+f8MyQh5smJjozMk0GGF99g7N91j86FDLwFseyN297L/KEWOCRiXHvmzTSlIaWHwQeWaEJrqqi6tm0bWGbFe2C4TK/a5o+dsUSgggwVVAcRdW55MzCDRudejsRs9mS3FUOuHDp3K4KyP9R9jhiMtADom3bGXnpDN1EAIBenBX97+4k5/b5QIJ4DToaFkgFBUQ3Lq0VwHZn4s3Q8g3kxh/L48yo5CNKMVuS6VOXHj1WlulyJNjHxB35ccGfJ6bGeAAAAAElFTkSuQmCC',
       'searchUrl': 'https://subhd.tv/search/%tt%',
@@ -8113,6 +8114,68 @@ async function maybeAddLink(elem, site, scout_tick) {
     addLink(elem, site, 'error', scout_tick);
     return;
   }
+    // ================================================
+    // SPECIAL CASE: Subdl API
+    // ================================================
+    if (site.name === 'Subdl') {
+        GM.xmlHttpRequest({
+            method: 'GET',
+            timeout: parseInt(GM_config.get('timeout_ms')),
+            url: search_url,
+            headers: {
+                'accept': '*/*',
+                'accept-language': 'en-US,en;q=0.6',
+                'cache-control': 'no-cache',
+                'origin': 'https://subdl.com',
+                'pragma': 'no-cache',
+                'referer': 'https://subdl.com/',
+                'sec-ch-ua': '"Not=A?Brand";v="99", "Brave";v="151", "Chromium";v="151"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Linux"',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
+                'sec-fetch-site': 'same-site',
+                'sec-gpc': '1',
+                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36'
+            },
+            onload: function(response) {
+                if (response.status == 200) {
+                    try {
+                        const data = JSON.parse(response.responseText);
+                        if (data.results && data.results.length > 0) {
+                            // Get the first result's link
+                            const firstResult = data.results[0];
+                            const link = firstResult.link;
+                            // Create a temporary goToUrl with the actual link
+                            const tempSite = JSON.parse(JSON.stringify(site));
+                            tempSite.goToUrl = 'https://subdl.com' + link;
+                            addLink(elem, tempSite, 'found', scout_tick);
+                        } else {
+                            addLink(elem, site, 'missing', scout_tick);
+                        }
+                    } catch (e) {
+                        console.log('❌ Subdl API response parse error:', e);
+                        addLink(elem, site, 'error', scout_tick);
+                    }
+                } else {
+                    addLink(elem, site, 'logged_out', scout_tick);
+                }
+            },
+            onerror: function() {
+                addLink(elem, site, 'error', scout_tick);
+                console.log("❌ IMDb Scout Mod (Subdl API Request Error).");
+            },
+            onabort: function() {
+                addLink(elem, site, 'error', scout_tick);
+                console.log("❌ IMDb Scout Mod (Subdl API Request aborted).");
+            },
+            ontimeout: function() {
+                addLink(elem, site, 'error', scout_tick);
+                console.log("❌ IMDb Scout Mod (Subdl API Request timed out).");
+            }
+        });
+        return;
+    }
 
   // Request POST header
   let reqPOSTHeader = {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'};
