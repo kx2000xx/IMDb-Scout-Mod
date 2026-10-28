@@ -1,7 +1,7 @@
 // ==UserScript==
 //
 // @name         IMDb Scout Mod
-// @version      27.7.0
+// @version      29.0.0
 // @namespace    https://github.com/Purfview/IMDb-Scout-Mod
 // @description  Auto search for movie/series on torrent, usenet, ddl, subtitles, streaming, predb and other sites. Adds links to IMDb pages from hundreds various sites. Adds movies/series to Radarr/Sonarr. Adds external ratings from Metacritic, Rotten Tomatoes, Letterboxd, Douban, Allocine, MyAnimeList, AniList. Media Server indicators for Plex, Jellyfin, Emby. Dark theme/style for Reference View. Adds/Removes to/from Trakt's watchlist. Removes ads.
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAMFBMVEUAAAD/AAAcAAA1AABEAABVAAC3AADnAAD2AACFAAClAABlAAB3AADHAACVAADYAABCnXhrAAAD10lEQVRIx73TV4xMURgH8H/OnRmZWe3T7h2sOWaNXu7oJRg9UccuHgTRBatMtAgSg+gJu9q+kFmihcQoD8qLTkK0CIkoy0YJITsRD0rCKTHFrnkSv5e5c88/53znO+fiPwvsvrN038cPNqrG9pJmHkRVnPcpaTlHJY60cfPSpsrzl1LKihrmLvxhCM2i3OHvDx0d+H7e3F6JBv5iZMiJfhFTfPYDMHrMImpwimWWUdSgDQkbno7fFpUPVgh+pHFbZR4SovSctDCM9Hac9IKd9rO8EevtBCkXgY5IMmgquwypP7qqfcp/Tp4KLONDVsWh3RSBB2rnZfit69ocUdqLn2prrRZYM0Jg4JibamKsqe7gfEh5GOAfeYJjVHIPZvil97rcXkMog30byWRwXYRWoxHbzNFHJJpAarO8NdEBBsdCaP3WMJltTmQd4zlnekTq9Z5dgACwAlrpK4BxdV5mvLuspRgMSHbCIFF0iS8MZ5S8oYBYKY7rByC4dDM9uSIUmPOIwxgQBoYeF93auP4qFyPbIVXziWeGTH1EFM57kJo2hqQju6BwIyRf6RmCjdT4JOdiwNgiH/PPD3qoqlsNaXRd+fKtFfECxlZVNVF9SOsgTZEr2TUjJJbyeNX1IZrKIbyGlBABfpQPv2UDrly13LkJXDVhpQ5MhtGwcyF4HKjlU4E8xwB0AvDjd6AGmevZ87EcQRHgcO52e9uNsYELOrAa/Yh81YlmYLQJ5HWyq0+kzQ/DQKEusg6CRI27ryy8nReRS0wsoetkmRwogHSprliCckfEjXG9yAQc74J0WB99vu6DF3i3pMucsXM6tpBbxd2mVJAwXwGogNRBvGRA4jtHKTXkAIwLGCR/mT4Lh75oneQXXP9sAYfGRDCsnw7pX/jRZkU3M44kjw2l5zRIzb4CbZ8dULdL6wbNPZOpK0B6gN1UR1mdoxAaL/GrWiLPL3SEwW9YMTU/d64BtLahAVyucWhj9Mm8ign9IfQaBtd2/GbvCAEBpG5eMcrj2I0ktpKLeaqXQ3Pst42KGIshpdTmQLAeTgFGJ2wvh+tayMOR0n1RZ8B9z13vnOPBnsBq4E1ffgZpPFZHWVpO2cvhjYpOcbBd5TlhpDu5zq9mHGZcVi0y+VFkcFkDdyKJfTt99wEyHSEzDM90KH0nexpwZHJHKYYhjzlwGe0pP/IKfxociaEb7YDbi6KGJY1R2cR76E6NAtXqY4pPH3plLcl8LD7V+cOLUbUWRFZRPTAbVZO3mxK18Xc1ZaAiS8ARJXpZliXAomR94siiiMx8ZBOkXGTlnH0F/9ov1xPtWwEqP9wAAAAASUVORK5CYII=
@@ -7224,7 +7224,6 @@ function getAnimeID(movie_id) {
   });
 }
 
-// Add this after the getAnimeID function (around line 23,750)
 function getLetterboxdData() {
     console.log("IMDb Scout Mod (getLetterboxdData): Started.");
 
@@ -7263,9 +7262,18 @@ function getLetterboxdData() {
 function performLetterboxdPage() {
     console.log("IMDb Scout Mod (performLetterboxdPage): Processing Letterboxd page.");
 
+    // One-shot guard keyed by pathname (allows different films, blocks double-run on same page)
+    const pageKey = location.pathname;
+    if (window.__imdbScoutLetterboxdDone === pageKey) {
+        console.log("IMDb Scout Mod (performLetterboxdPage): Already ran on this page, skipping.");
+        return;
+    }
+    window.__imdbScoutLetterboxdDone = pageKey;
+
     const data = getLetterboxdData();
     if (!data) {
         console.warn("IMDb Scout Mod: Failed to extract data from Letterboxd.");
+        window.__imdbScoutLetterboxdDone = null; // allow retry if data wasn't ready yet
         return;
     }
 
@@ -7300,27 +7308,29 @@ function performLetterboxdPage() {
     // Create search link areas
     addLetterboxdLinkAreas();
 
-    // Add searchable sites with a slight delay to ensure DOM is ready
+    // Add searchable sites with a slight delay to ensure DOM is ready.
+    // IMPORTANT: Call perform() ONLY ONCE (same as IMDb). perform() loops over ALL
+    // sites and routes each one to the correct bar via inSecondSearchBar /
+    // inThirdSearchBar. Calling it once per bar caused every 1st-bar site to be
+    // appended 2–3 times.
     if (!GM_config.get("disable_sites")) {
         setTimeout(function() {
             const header1 = document.getElementById('letterboxd_scout_header');
-            const header2 = document.getElementById('letterboxd_scout_second_header');
-            const header3 = document.getElementById('letterboxd_scout_third_header');
-
-            if (header1) {
-                perform(header1, movie_id, movie_title, movie_title_orig,
-                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
+            if (!header1) {
+                console.log("❌ IMDb Scout Mod (Letterboxd): 1st search bar not found.");
+                return;
             }
 
-            if (GM_config.get('load_second_bar_movie') && header2) {
-                perform(header2, movie_id, movie_title, movie_title_orig,
-                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
-            }
+            // Clear existing icons to prevent duplicates if this runs more than once
+            ['', 'second_', 'third_'].forEach(function(prefix) {
+                ['seeding', 'found', 'missing', 'logged_out', 'error'].forEach(function(state) {
+                    const el = document.getElementById('letterboxd_scout_' + prefix + state);
+                    if (el) el.innerHTML = '';
+                });
+            });
 
-            if (GM_config.get('load_third_bar_movie') && header3) {
-                perform(header3, movie_id, movie_title, movie_title_orig,
-                        is_tv, is_movie, series_id, season_id, episode_id, movie_year);
-            }
+            perform(header1, movie_id, movie_title, movie_title_orig,
+                    is_tv, is_movie, series_id, season_id, episode_id, movie_year);
         }, 200);
     }
 }
@@ -7437,42 +7447,6 @@ function externalRatingsLetterboxd(imdbid, title, title_orig) {
 }
 
 
-function getLetterboxdData() {
-    console.log("IMDb Scout Mod (getLetterboxdData): Started.");
-
-    // Get IMDb ID
-    const imdbLink = document.querySelector('a[href*="imdb.com/title/"]');
-    if (!imdbLink) {
-        console.log("IMDb Scout Mod: No IMDb link found on Letterboxd page.");
-        return null;
-    }
-    const imdbID = imdbLink.href.match(/tt\d+/)?.[0];
-    if (!imdbID) {
-        console.log("IMDb Scout Mod: Could not extract IMDb ID from link.");
-        return null;
-    }
-
-    // Get Title
-    const titleElement = document.querySelector('span.name.js-widont.prettify');
-    const title = titleElement ? titleElement.textContent.trim() : null;
-    if (!title) {
-        console.log("IMDb Scout Mod: Could not extract title from Letterboxd page.");
-        return null;
-    }
-
-    // Get Year
-    const yearElement = document.querySelector('a[href^="/films/year/"]');
-    const year = yearElement ? yearElement.textContent.trim() : null;
-    if (!year) {
-        console.log("IMDb Scout Mod: Could not extract year from Letterboxd page.");
-        return null;
-    }
-
-    console.log(`IMDb Scout Mod: Extracted - ID: ${imdbID}, Title: ${title}, Year: ${year}`);
-    return { imdbID: imdbID.replace('tt', ''), title: title, year: year };
-}
-
-
 function addIconBarLetterboxd(movie_id, movie_title, movie_title_orig, movie_year) {
     // Find the production-synopsis section
     const synopsisSection = document.querySelector('.production-synopsis');
@@ -7481,7 +7455,7 @@ function addIconBarLetterboxd(movie_id, movie_title, movie_title_orig, movie_yea
         return;
     }
 
-    // Check if icon bar already exists
+    // Strong guard against duplicates
     if ($('#letterboxd_scout_iconsheader').length) {
         return;
     }
@@ -7503,75 +7477,82 @@ function addIconBarLetterboxd(movie_id, movie_title, movie_title_orig, movie_yea
     // Insert after the synopsis section
     $(synopsisSection).after(p);
 
-    // Add icons
-    $.each(icon_sites, async function(index, site) {
-        if (site['show']) {
-            site = await replaceSearchUrlParams(site, movie_id, movie_title, movie_title_orig, movie_year);
-            var search_url = site.searchUrl;
-            var image = getFavicon(site).css({
-                'margin': '2px 3px 2px 3px',
-                'display': 'inline-block',
-                'vertical-align': 'middle'
-            });
-            var html = $('<a />').attr('href', search_url).attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
+    // Add icons sequentially (proper async handling – $.each does not await)
+    (async () => {
+        for (const site of icon_sites) {
+            if (!site['show']) continue;
 
-            // Handle POST method sites
-            if ('mPOST' in site) {
-                var form_name = site['name'] + '-iconform';
-                form_name = form_name.replace(/\s|\.|\(|\)/g, '-');
-                var placebo_url = new URL(site['searchUrl']).origin;
-                html = $('<a />').attr('href', placebo_url).attr('onclick', "document.getElementById('"+form_name+"').submit(); return false;").attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
+            try {
+                // Clone so we do not mutate the global site object
+                const processed = await replaceSearchUrlParams(
+                    Object.assign({}, site),
+                    movie_id, movie_title, movie_title_orig, movie_year
+                );
+                var search_url = processed.searchUrl;
+                var image = getFavicon(processed).css({
+                    'margin': '2px 3px 2px 3px',
+                    'display': 'inline-block',
+                    'vertical-align': 'middle'
+                });
+                var html = $('<a />').attr('href', search_url).attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
 
-                const post_data = site.mPOST;
-                var data = (post_data.match('{')) ? post_data.replace(/\+/g, ' ') : '{key:"' + post_data.replace(/&/g, '"},{key:"').replace(/=/g, '",value:"').replace(/\+/g, ' ') + '"}';
-                var addform = $('<form></form>');
-                addform.attr('id', form_name);
-                addform.attr('action', search_url);
-                addform.attr('method', 'post');
-                addform.attr('style', 'display: none;');
-                addform.attr('target', '_blank');
-                addform.attr('rel', 'noreferrer');
+                // Handle POST method sites
+                if ('mPOST' in processed) {
+                    var form_name = processed['name'] + '-iconform';
+                    form_name = form_name.replace(/\s|\.|\(|\)/g, '-');
+                    var placebo_url = new URL(processed['searchUrl']).origin;
+                    html = $('<a />').attr('href', placebo_url).attr('onclick', "document.getElementById('"+form_name+"').submit(); return false;").attr('target', '_blank').attr('rel', 'noreferrer').addClass('iconbar_icon').css('display', 'inline-block').append(image);
 
-                if (data.startsWith('{key:')) {
-                    const dataArray = (new Function("return [" + data + "];")());
-                    dataArray.forEach(function (item) {
-                        let addinput = $("<input>");
-                        addinput.attr('type', 'text');
-                        addinput.attr('name', item.key);
-                        addinput.attr('value', item.value);
-                        addform.append(addinput);
+                    const post_data = processed.mPOST;
+                    var data = (post_data.match('{')) ? post_data.replace(/\+/g, ' ') : '{key:"' + post_data.replace(/&/g, '"},{key:"').replace(/=/g, '",value:"').replace(/\+/g, ' ') + '"}';
+                    var addform = $('<form></form>');
+                    addform.attr('id', form_name);
+                    addform.attr('action', search_url);
+                    addform.attr('method', 'post');
+                    addform.attr('style', 'display: none;');
+                    addform.attr('target', '_blank');
+                    addform.attr('rel', 'noreferrer');
+
+                    if (data.startsWith('{key:')) {
+                        const dataArray = (new Function("return [" + data + "];")());
+                        dataArray.forEach(function (item) {
+                            let addinput = $("<input>");
+                            addinput.attr('type', 'text');
+                            addinput.attr('name', item.key);
+                            addinput.attr('value', item.value);
+                            addform.append(addinput);
+                        });
                         $('body').append(addform);
-                    });
-                } else {
-                    data = JSON.parse(data);
-                    for (const name in data) {
-                        let addinput = $("<input>");
-                        addinput.attr('type', 'text');
-                        addinput.attr('name', name);
-                        addinput.attr('value', data[name]);
-                        addform.append(addinput);
+                    } else {
+                        data = JSON.parse(data);
+                        for (const name in data) {
+                            let addinput = $("<input>");
+                            addinput.attr('type', 'text');
+                            addinput.attr('name', name);
+                            addinput.attr('value', data[name]);
+                            addform.append(addinput);
+                        }
                         $('body').append(addform);
                     }
                 }
+                $('#letterboxd_scout_iconsheader').append(html);
+            } catch (e) {
+                console.warn("IMDb Scout Mod (Letterboxd): Failed to add icon for " + (site.name || "unknown"), e);
             }
-            $('#letterboxd_scout_iconsheader').append(html);
         }
-    });
 
-    // Add "Open All" button if not removed
-    if (!GM_config.get("remove_openall") && GM.openInTab) {
-        setTimeout(() => {
+        // Add "Open All" button if not removed (scoped to this header only)
+        if (!GM_config.get("remove_openall") && GM.openInTab) {
             var aopenall = $('<a />').text('Open All').prepend("&nbsp;").attr('href', 'javascript:;').attr('style', 'font-weight:bold;font-size:11px;font-family: Calibri, Verdana, Arial, Helvetica, sans-serif; display: inline-block; vertical-align: middle; margin-left: 5px;');
             aopenall.click(function() {
-                $('.iconbar_icon').each(function() {
+                $('#letterboxd_scout_iconsheader .iconbar_icon').each(function() {
                     GM.openInTab($(this).attr('href'));
                 });
             });
             $('#letterboxd_scout_iconsheader').append(aopenall);
-        }, 300);
-    }
+        }
+    })();
 }
-
 
 function getIconsLinkAreaLetterboxd() {
     // Check if it already exists
